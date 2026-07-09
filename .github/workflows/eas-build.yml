@@ -1,0 +1,51 @@
+name: EAS Build
+
+# Produces real installable builds via Expo Application Services.
+# Requires an EXPO_TOKEN repository secret (create at https://expo.dev/settings/access-tokens).
+# Triggered manually so it never blocks PRs and never runs without credentials.
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: Platform to build
+        type: choice
+        default: all
+        options: [all, android, ios]
+      profile:
+        description: EAS build profile
+        type: choice
+        default: preview
+        options: [development, preview, production]
+
+env:
+  EXPO_NO_TELEMETRY: '1'
+
+jobs:
+  eas:
+    name: EAS Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - name: Fail if EXPO_TOKEN is missing
+        run: |
+          if [ -z "${{ secrets.EXPO_TOKEN }}" ]; then
+            echo "::error::EXPO_TOKEN secret is not set. Add it in repo Settings > Secrets."
+            exit 1
+          fi
+      - run: npm ci
+      - name: Build
+        run: |
+          eas build \
+            --platform ${{ inputs.platform }} \
+            --profile ${{ inputs.profile }} \
+            --non-interactive \
+            --no-wait
