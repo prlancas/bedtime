@@ -105,8 +105,20 @@ function SettingsInner() {
 
       <Text className="mb-2 mt-6 text-lg font-bold text-white">Advanced · weekend offsets</Text>
       <Card className="gap-4">
-        <NumberStepper label="Friday night later by" value={fri} onChange={setFri} max={180} step={15} />
-        <NumberStepper label="Saturday night later by" value={sat} onChange={setSat} max={180} step={15} />
+        <NumberStepper
+          label="Friday night later by"
+          value={fri}
+          onChange={setFri}
+          max={180}
+          step={15}
+        />
+        <NumberStepper
+          label="Saturday night later by"
+          value={sat}
+          onChange={setSat}
+          max={180}
+          step={15}
+        />
         <Text className="text-xs text-night-300">
           Non-school nights: kids can stay up this much later on Fri/Sat.
         </Text>

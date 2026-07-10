@@ -60,13 +60,17 @@ export function BedtimeChart({ records }: { records: BedtimeRecord[] }) {
 
 export function ReasonBars({ data }: { data: { reason: string; count: number }[] }) {
   if (data.length === 0) {
-    return <Text className="py-4 text-center text-night-300">No bad-bedtime reasons recorded. 🎉</Text>;
+    return (
+      <Text className="py-4 text-center text-night-300">No bad-bedtime reasons recorded. 🎉</Text>
+    );
   }
   const barData = data.map((d) => ({
     value: d.count,
     label: d.reason.length > 8 ? `${d.reason.slice(0, 7)}…` : d.reason,
     frontColor: colors.bad,
-    topLabelComponent: () => <Text style={{ color: colors.night100, fontSize: 10 }}>{d.count}</Text>,
+    topLabelComponent: () => (
+      <Text style={{ color: colors.night100, fontSize: 10 }}>{d.count}</Text>
+    ),
   }));
 
   return (

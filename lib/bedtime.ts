@@ -7,7 +7,10 @@ export type Outcome = 'good' | 'bad' | 'revoked';
  * The weekend offset applied to a given night. Friday and Saturday nights are
  * treated as non-school nights, so kids may stay up later.
  */
-export function weekendOffsetForDate(date: Date, settings: Pick<Settings, 'fridayOffsetMinutes' | 'saturdayOffsetMinutes'>): number {
+export function weekendOffsetForDate(
+  date: Date,
+  settings: Pick<Settings, 'fridayOffsetMinutes' | 'saturdayOffsetMinutes'>,
+): number {
   const day = date.getDay();
   if (day === 5) return settings.fridayOffsetMinutes;
   if (day === 6) return settings.saturdayOffsetMinutes;
@@ -22,7 +25,10 @@ export function weekendOffsetForDate(date: Date, settings: Pick<Settings, 'frida
 export function effectiveBedtime(
   baseBedtimeMinutes: number,
   date: Date,
-  settings: Pick<Settings, 'minBedtimeMinutes' | 'maxBedtimeMinutes' | 'fridayOffsetMinutes' | 'saturdayOffsetMinutes'>,
+  settings: Pick<
+    Settings,
+    'minBedtimeMinutes' | 'maxBedtimeMinutes' | 'fridayOffsetMinutes' | 'saturdayOffsetMinutes'
+  >,
 ): number {
   const base = clamp(baseBedtimeMinutes, settings.minBedtimeMinutes, settings.maxBedtimeMinutes);
   return base + (isWeekendNight(date) ? weekendOffsetForDate(date, settings) : 0);
@@ -36,7 +42,10 @@ export function effectiveBedtime(
 export function applyOutcome(
   baseBedtimeMinutes: number,
   outcome: Outcome,
-  settings: Pick<Settings, 'goodDeltaMinutes' | 'badDeltaMinutes' | 'minBedtimeMinutes' | 'maxBedtimeMinutes'>,
+  settings: Pick<
+    Settings,
+    'goodDeltaMinutes' | 'badDeltaMinutes' | 'minBedtimeMinutes' | 'maxBedtimeMinutes'
+  >,
 ): number {
   const delta = outcome === 'good' ? settings.goodDeltaMinutes : -settings.badDeltaMinutes;
   return clamp(baseBedtimeMinutes + delta, settings.minBedtimeMinutes, settings.maxBedtimeMinutes);
@@ -46,10 +55,17 @@ export function applyOutcome(
 export function applyAdjustment(
   baseBedtimeMinutes: number,
   type: 'treat' | 'penalty',
-  settings: Pick<Settings, 'goodDeltaMinutes' | 'badDeltaMinutes' | 'minBedtimeMinutes' | 'maxBedtimeMinutes'>,
+  settings: Pick<
+    Settings,
+    'goodDeltaMinutes' | 'badDeltaMinutes' | 'minBedtimeMinutes' | 'maxBedtimeMinutes'
+  >,
 ): { next: number; delta: number } {
   const delta = type === 'treat' ? settings.goodDeltaMinutes : -settings.badDeltaMinutes;
-  const next = clamp(baseBedtimeMinutes + delta, settings.minBedtimeMinutes, settings.maxBedtimeMinutes);
+  const next = clamp(
+    baseBedtimeMinutes + delta,
+    settings.minBedtimeMinutes,
+    settings.maxBedtimeMinutes,
+  );
   return { next, delta: next - baseBedtimeMinutes };
 }
 

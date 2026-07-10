@@ -90,9 +90,7 @@ export default function EditChild() {
             icon={<Ionicons name="image" size={18} color="#E0E3FF" />}
             onPress={() => handlePhoto('library')}
           />
-          {photoUri && (
-            <Button label="Clear" variant="ghost" onPress={() => setPhotoUri(null)} />
-          )}
+          {photoUri && <Button label="Clear" variant="ghost" onPress={() => setPhotoUri(null)} />}
         </View>
       </Card>
 

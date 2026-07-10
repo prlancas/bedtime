@@ -20,7 +20,13 @@ const STEPS = [
   { delta: 60, label: '+1h' },
 ];
 
-export function TimeStepper({ label, value, onChange, min = 0, max = MINUTES_IN_DAY - 1 }: TimeStepperProps) {
+export function TimeStepper({
+  label,
+  value,
+  onChange,
+  min = 0,
+  max = MINUTES_IN_DAY - 1,
+}: TimeStepperProps) {
   return (
     <View>
       {label ? <Text className="mb-2 text-sm font-semibold text-night-300">{label}</Text> : null}

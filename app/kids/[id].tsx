@@ -13,6 +13,7 @@ import {
   addAdjustment,
   getChild,
   getSettings,
+  listReasons,
   listRecords,
   reasonStats,
   recordsSince,
@@ -20,7 +21,6 @@ import {
   streak,
 } from '@/db/repo';
 import type { BedtimeRecord, Reason } from '@/db/schema';
-import { listReasons } from '@/db/repo';
 import { effectiveBedtime } from '@/lib/bedtime';
 import { addDays, dateKey, formatTime } from '@/lib/time';
 import { useStore } from '@/store/useStore';
@@ -29,7 +29,7 @@ export default function ChildDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const childId = Number(id);
   const refresh = useStore((s) => s.refresh);
-  const [tick, setTick] = useState(0);
+  const [, setTick] = useState(0);
 
   useFocusEffect(useCallback(() => setTick((t) => t + 1), []));
 
@@ -56,14 +56,20 @@ export default function ChildDetail() {
     addAdjustment(childId, 'treat');
     await refresh();
     setTick((t) => t + 1);
-    Alert.alert('Treat added ✨', `${child!.name}'s bedtime moved later by ${settings.goodDeltaMinutes} min.`);
+    Alert.alert(
+      'Treat added ✨',
+      `${child!.name}'s bedtime moved later by ${settings.goodDeltaMinutes} min.`,
+    );
   }
 
   async function penalty() {
     addAdjustment(childId, 'penalty');
     await refresh();
     setTick((t) => t + 1);
-    Alert.alert('Penalty added', `${child!.name}'s bedtime moved earlier by ${settings.badDeltaMinutes} min.`);
+    Alert.alert(
+      'Penalty added',
+      `${child!.name}'s bedtime moved earlier by ${settings.badDeltaMinutes} min.`,
+    );
   }
 
   function confirmRevoke(record: BedtimeRecord) {
@@ -97,7 +103,8 @@ export default function ChildDetail() {
         <Avatar name={child.name} photoUri={child.photoUri} color={child.color} size={88} />
         <Text className="mt-3 text-lg font-semibold text-moon">Tonight: {formatTime(tonight)}</Text>
         <Text className="text-sm text-night-300">
-          Base {formatTime(child.baseBedtimeMinutes)} · {days} good night{days === 1 ? '' : 's'} in a row
+          Base {formatTime(child.baseBedtimeMinutes)} · {days} good night{days === 1 ? '' : 's'} in
+          a row
         </Text>
         <View className="mt-4 w-full flex-row gap-3">
           <View className="flex-1">
@@ -140,9 +147,14 @@ export default function ChildDetail() {
         <Text className="text-night-300">No nights assessed yet.</Text>
       ) : (
         records.map((r) => (
-          <View key={r.id} className="mb-2 flex-row items-center gap-3 rounded-2xl bg-night-800/70 p-3">
+          <View
+            key={r.id}
+            className="mb-2 flex-row items-center gap-3 rounded-2xl bg-night-800/70 p-3"
+          >
             <Ionicons
-              name={r.outcome === 'good' ? 'happy' : r.outcome === 'revoked' ? 'close-circle' : 'sad'}
+              name={
+                r.outcome === 'good' ? 'happy' : r.outcome === 'revoked' ? 'close-circle' : 'sad'
+              }
               size={22}
               color={r.outcome === 'good' ? '#34D399' : '#FB7185'}
             />

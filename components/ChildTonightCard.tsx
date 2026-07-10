@@ -48,7 +48,9 @@ export function ChildTonightCard({ child, now }: { child: Child; now: Date }) {
           </View>
         </View>
         {record ? (
-          <View className={`items-center rounded-2xl px-3 py-2 ${OUTCOME_STYLE[record.outcome].bg}`}>
+          <View
+            className={`items-center rounded-2xl px-3 py-2 ${OUTCOME_STYLE[record.outcome].bg}`}
+          >
             <Ionicons name={OUTCOME_STYLE[record.outcome].icon} size={18} color="#1E1B4B" />
             <Text className="mt-0.5 text-[10px] font-bold text-night-900">
               {OUTCOME_STYLE[record.outcome].label}
@@ -56,8 +58,12 @@ export function ChildTonightCard({ child, now }: { child: Child; now: Date }) {
           </View>
         ) : (
           <View className="items-center rounded-2xl bg-night-900 px-3 py-2">
-            <Text className="text-xs font-bold text-night-100">{countdownLabel(nextTargetMin, now)}</Text>
-            <Text className="text-[10px] text-night-300">until {nowMin < warningMin ? 'warning' : 'bed'}</Text>
+            <Text className="text-xs font-bold text-night-100">
+              {countdownLabel(nextTargetMin, now)}
+            </Text>
+            <Text className="text-[10px] text-night-300">
+              until {nowMin < warningMin ? 'warning' : 'bed'}
+            </Text>
           </View>
         )}
       </View>

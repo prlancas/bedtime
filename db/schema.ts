@@ -17,7 +17,9 @@ export const children = sqliteTable('children', {
   bedtimeSound: text('bedtime_sound').notNull().default('bedtime'),
   active: integer('active', { mode: 'boolean' }).notNull().default(true),
   sortOrder: integer('sort_order').notNull().default(0),
-  createdAt: integer('created_at').notNull().default(sql`(unixepoch() * 1000)`),
+  createdAt: integer('created_at')
+    .notNull()
+    .default(sql`(unixepoch() * 1000)`),
 });
 
 /** Single-row (id = 1) global configuration. */
@@ -46,14 +48,18 @@ export const bedtimeRecords = sqliteTable('bedtime_records', {
   reasonId: integer('reason_id').references(() => reasons.id),
   note: text('note'),
   nextBedtimeMinutes: integer('next_bedtime_minutes').notNull(),
-  createdAt: integer('created_at').notNull().default(sql`(unixepoch() * 1000)`),
+  createdAt: integer('created_at')
+    .notNull()
+    .default(sql`(unixepoch() * 1000)`),
 });
 
 /** Reusable reasons for a bad bedtime (e.g. "hiding", "moaning and shouting"). */
 export const reasons = sqliteTable('reasons', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   text: text('text').notNull().unique(),
-  createdAt: integer('created_at').notNull().default(sql`(unixepoch() * 1000)`),
+  createdAt: integer('created_at')
+    .notNull()
+    .default(sql`(unixepoch() * 1000)`),
 });
 
 /** Manual treats (later) / penalties (earlier) for behaviour outside bedtime. */
@@ -66,7 +72,9 @@ export const adjustments = sqliteTable('adjustments', {
   type: text('type', { enum: ['treat', 'penalty'] }).notNull(),
   deltaMinutes: integer('delta_minutes').notNull(), // signed: + later, - earlier
   note: text('note'),
-  createdAt: integer('created_at').notNull().default(sql`(unixepoch() * 1000)`),
+  createdAt: integer('created_at')
+    .notNull()
+    .default(sql`(unixepoch() * 1000)`),
 });
 
 export type Child = typeof children.$inferSelect;

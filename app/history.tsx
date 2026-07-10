@@ -1,6 +1,5 @@
 import { useCallback } from 'react';
-import { Text, View } from 'react-native';
-import { Pressable } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 
 import { Avatar } from '@/components/Avatar';
@@ -42,7 +41,12 @@ export default function History() {
               >
                 <Card>
                   <View className="flex-row items-center gap-3">
-                    <Avatar name={child.name} photoUri={child.photoUri} color={child.color} size={44} />
+                    <Avatar
+                      name={child.name}
+                      photoUri={child.photoUri}
+                      color={child.color}
+                      size={44}
+                    />
                     <View className="flex-1">
                       <Text className="text-lg font-bold text-white">{child.name}</Text>
                       <Text className="text-xs text-night-300">

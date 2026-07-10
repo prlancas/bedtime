@@ -29,7 +29,11 @@ export default function Alarm() {
 
   const pulse = useSharedValue(1);
   useEffect(() => {
-    pulse.value = withRepeat(withTiming(1.08, { duration: 700, easing: Easing.inOut(Easing.ease) }), -1, true);
+    pulse.value = withRepeat(
+      withTiming(1.08, { duration: 700, easing: Easing.inOut(Easing.ease) }),
+      -1,
+      true,
+    );
     playSound(kind === 'bedtime' ? 'bedtime' : 'warning', kind === 'bedtime');
     return () => stopSound();
   }, [kind, pulse]);
@@ -62,14 +66,24 @@ export default function Alarm() {
           </Text>
         </View>
 
-        <Animated.View style={pulseStyle} className="flex-row flex-wrap items-center justify-center gap-6">
+        <Animated.View
+          style={pulseStyle}
+          className="flex-row flex-wrap items-center justify-center gap-6"
+        >
           {kids.map((child) => (
             <View key={child.id} className="items-center">
-              <Avatar name={child.name} photoUri={child.photoUri} color={child.color} size={avatarSize} />
+              <Avatar
+                name={child.name}
+                photoUri={child.photoUri}
+                color={child.color}
+                size={avatarSize}
+              />
               <Text className="mt-3 text-xl font-black text-white">{child.name}</Text>
             </View>
           ))}
-          {kids.length === 0 && <Text className="text-night-200">No kids scheduled right now.</Text>}
+          {kids.length === 0 && (
+            <Text className="text-night-200">No kids scheduled right now.</Text>
+          )}
         </Animated.View>
 
         <View className="w-full gap-3">

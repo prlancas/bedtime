@@ -21,7 +21,8 @@ export default function Dashboard() {
   useFocusEffect(useCallback(() => reload(), [reload]));
 
   const nowMin = minutesFromDate(now);
-  const greeting = nowMin < 720 ? 'Good morning' : nowMin < 1020 ? 'Good afternoon' : 'Good evening';
+  const greeting =
+    nowMin < 720 ? 'Good morning' : nowMin < 1020 ? 'Good afternoon' : 'Good evening';
   const pendingReview = kids.some((c) => !getRecordForDate(c.id, dateKey()));
 
   return (

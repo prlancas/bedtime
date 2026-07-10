@@ -76,7 +76,9 @@ async function scheduleOne(child: Child, kind: AlarmKind, when: Date, date: stri
   await notifee.createTriggerNotification(
     {
       id: alarmId(kind, child.id, date),
-      title: isBedtime ? `\u{1F319} Bedtime for ${child.name}!` : `\u23F0 Get ready, ${child.name}!`,
+      title: isBedtime
+        ? `\u{1F319} Bedtime for ${child.name}!`
+        : `\u23F0 Get ready, ${child.name}!`,
       body: isBedtime
         ? `It's ${formatTime(when.getHours() * 60 + when.getMinutes())} \u2014 time for bed.`
         : `${child.warningLeadMinutes} minutes until bedtime. Grab a snack and get ready!`,

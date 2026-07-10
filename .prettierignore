@@ -1,0 +1,10 @@
+node_modules
+ios
+android
+.expo
+dist
+coverage
+assets
+db/migrations
+package-lock.json
+*.hbc

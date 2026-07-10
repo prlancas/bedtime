@@ -18,7 +18,7 @@ export default function Reasons() {
 
 function ReasonsInner() {
   const [text, setText] = useState('');
-  const [tick, setTick] = useState(0);
+  const [, setTick] = useState(0);
   const reasons = listReasons();
   const stats = new Map(reasonStats().map((s) => [s.reason, s.count]));
 
@@ -56,7 +56,10 @@ function ReasonsInner() {
         </Text>
       ) : (
         reasons.map((r) => (
-          <View key={r.id} className="mb-2 flex-row items-center gap-3 rounded-2xl bg-night-800/70 p-3">
+          <View
+            key={r.id}
+            className="mb-2 flex-row items-center gap-3 rounded-2xl bg-night-800/70 p-3"
+          >
             <Ionicons name="pricetag" size={18} color="#A0A9FF" />
             <Text className="flex-1 text-white">{r.text}</Text>
             <View className="rounded-full bg-night-900 px-2 py-1">

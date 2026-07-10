@@ -36,10 +36,14 @@ export default function KidsList() {
             <Avatar name={child.name} photoUri={child.photoUri} color={child.color} size={52} />
             <View className="flex-1">
               <Text className="text-lg font-bold text-white">{child.name}</Text>
-              <Text className="text-sm text-night-300">Bedtime {formatTime(child.baseBedtimeMinutes)}</Text>
+              <Text className="text-sm text-night-300">
+                Bedtime {formatTime(child.baseBedtimeMinutes)}
+              </Text>
             </View>
             {!child.active && (
-              <Text className="mr-2 rounded-full bg-night-900 px-2 py-1 text-xs text-night-300">Hidden</Text>
+              <Text className="mr-2 rounded-full bg-night-900 px-2 py-1 text-xs text-night-300">
+                Hidden
+              </Text>
             )}
             <Ionicons name="chevron-forward" size={20} color="#5B5FE0" />
           </Pressable>

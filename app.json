@@ -13,9 +13,7 @@
       "infoPlist": {
         "NSCameraUsageDescription": "Bedtime uses the camera to take a profile picture for each child.",
         "NSPhotoLibraryUsageDescription": "Bedtime lets you choose a profile picture for each child from your photos.",
-        "UIBackgroundModes": [
-          "audio"
-        ]
+        "UIBackgroundModes": ["audio"]
       }
     },
     "android": {
@@ -56,10 +54,7 @@
       [
         "expo-notifications",
         {
-          "sounds": [
-            "./assets/sounds/warning.wav",
-            "./assets/sounds/bedtime.wav"
-          ]
+          "sounds": ["./assets/sounds/warning.wav", "./assets/sounds/bedtime.wav"]
         }
       ],
       [

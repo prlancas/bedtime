@@ -9,10 +9,8 @@ import { Card } from '@/components/Card';
 import { NavBar } from '@/components/NavBar';
 import { PinGate } from '@/components/PinGate';
 import { Screen } from '@/components/Screen';
-import { assessNight, getRecordForDate, listReasons } from '@/db/repo';
-import { outcomeMessage } from '@/lib/bedtime';
-import { applyOutcome } from '@/lib/bedtime';
-import { getSettings } from '@/db/repo';
+import { assessNight, getRecordForDate, getSettings, listReasons } from '@/db/repo';
+import { applyOutcome, outcomeMessage } from '@/lib/bedtime';
 import { dateKey } from '@/lib/time';
 import { activeChildren, useStore } from '@/store/useStore';
 
@@ -68,8 +66,10 @@ function AssessInner() {
       {kids.map((child) => {
         const existing = getRecordForDate(child.id, dateKey());
         const state = done[child.id] ?? existing?.outcome;
-        const goodDelta = applyOutcome(child.baseBedtimeMinutes, 'good', settings) - child.baseBedtimeMinutes;
-        const badDelta = applyOutcome(child.baseBedtimeMinutes, 'bad', settings) - child.baseBedtimeMinutes;
+        const goodDelta =
+          applyOutcome(child.baseBedtimeMinutes, 'good', settings) - child.baseBedtimeMinutes;
+        const badDelta =
+          applyOutcome(child.baseBedtimeMinutes, 'bad', settings) - child.baseBedtimeMinutes;
 
         return (
           <Card key={child.id} className="mb-4">
@@ -77,7 +77,9 @@ function AssessInner() {
               <Avatar name={child.name} photoUri={child.photoUri} color={child.color} size={48} />
               <Text className="flex-1 text-lg font-bold text-white">{child.name}</Text>
               {state && (
-                <View className={`rounded-full px-3 py-1 ${state === 'good' ? 'bg-good' : 'bg-bad'}`}>
+                <View
+                  className={`rounded-full px-3 py-1 ${state === 'good' ? 'bg-good' : 'bg-bad'}`}
+                >
                   <Text className="text-xs font-bold text-night-900">
                     {state === 'good' ? 'Good' : state === 'revoked' ? 'Revoked' : 'Bad'}
                   </Text>
@@ -106,7 +108,9 @@ function AssessInner() {
 
             {expanded === child.id && (
               <View className="mt-4 gap-3">
-                <Text className="text-sm font-semibold text-night-300">Why? (helps track patterns)</Text>
+                <Text className="text-sm font-semibold text-night-300">
+                  Why? (helps track patterns)
+                </Text>
                 <View className="flex-row flex-wrap gap-2">
                   {reasons.map((r) => (
                     <Pressable

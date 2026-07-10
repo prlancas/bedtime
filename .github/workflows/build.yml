@@ -6,12 +6,16 @@ on:
   pull_request:
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   EXPO_NO_TELEMETRY: '1'
 
 jobs:
   quality:
-    name: Typecheck & config
+    name: Lint, typecheck & test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,8 +24,14 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Prettier
+        run: npm run format:check
+      - name: ESLint
+        run: npm run lint
       - name: TypeScript
         run: npm run typecheck
+      - name: Unit tests
+        run: npm run test:ci
       - name: Validate Expo config
         run: npx expo config --type public > /dev/null
 
@@ -56,10 +66,15 @@ jobs:
 
   ios:
     name: Build iOS (Simulator)
-    runs-on: macos-14
+    # macos-15 ships Xcode 16.x; React Native 0.86 requires Xcode >= 16.1.
+    runs-on: macos-15
     needs: quality
     steps:
       - uses: actions/checkout@v4
+      - name: Select Xcode >= 16.1
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
       - uses: actions/setup-node@v4
         with:
           node-version: 22
