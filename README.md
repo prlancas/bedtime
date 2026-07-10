@@ -1,8 +1,23 @@
 # 🌙 Bedtime
 
+[![Build](https://github.com/prlancas/bedtime/actions/workflows/build.yml/badge.svg)](https://github.com/prlancas/bedtime/actions/workflows/build.yml)
+[![Release](https://github.com/prlancas/bedtime/actions/workflows/release.yml/badge.svg)](https://github.com/prlancas/bedtime/actions/workflows/release.yml)
+[![Download](https://img.shields.io/github/v/release/prlancas/bedtime?label=download&sort=semver)](https://github.com/prlancas/bedtime/releases/latest)
+
 A fun, kid-friendly iOS + Android app that encourages children to go to bed without hassle. Set each child's bedtime and a pre-bedtime warning, get full-screen photo alarms with distinct sounds, then review the night as **good** or **bad** — tomorrow's bedtime automatically shifts earlier or later based on behaviour.
 
 Built with **Expo (React Native)**. All data stays **local on the device** — no account, no cloud.
+
+## Download
+
+Grab the latest installable builds from the **[Releases page](https://github.com/prlancas/bedtime/releases/latest)** — this is the download page for the app.
+
+| Platform    | File                             | How to install                                                                                                                                            |
+| ----------- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Android** | `bedtime-<version>.apk`          | Download on your phone, allow "Install unknown apps" for your browser/files app, then open the APK.                                                       |
+| **iOS**     | `bedtime-<version>-unsigned.ipa` | Unsigned — re-sign with Xcode / AltStore / Sideloadly to install on a device, or use [EAS](#building-with-eas-installable-builds) for a TestFlight build. |
+
+Releases are produced automatically by the [`release.yml`](.github/workflows/release.yml) workflow when a `v*` tag is pushed (see [Releasing](#releasing)).
 
 ## Features
 
@@ -116,9 +131,33 @@ GitHub Actions in [`.github/workflows`](.github/workflows):
 
   Both apps are uploaded as artifacts. No secrets required.
 
+- **`release.yml`** (on `v*` tag / manual): builds a **release APK** and an **iOS `.ipa`**, then publishes them to a [GitHub Release](https://github.com/prlancas/bedtime/releases) as downloadable assets. See [Releasing](#releasing).
+
 - **`eas-build.yml`** (manual): produces real installable builds via EAS. Requires an `EXPO_TOKEN` repo secret.
 
-> The iOS job explicitly pins Xcode via `maxim-lobanov/setup-xcode`. The default Xcode on some runner images is older than 16.1, which makes CocoaPods fail with _"React Native requires XCode >= 16.1"_ — pinning avoids that.
+> The iOS jobs explicitly pin Xcode via `maxim-lobanov/setup-xcode`. The default Xcode on some runner images is older than 16.1, which makes CocoaPods fail with _"React Native requires XCode >= 16.1"_ — pinning avoids that.
+
+## Releasing
+
+Push a version tag to build and publish downloadable artifacts to the [Releases page](https://github.com/prlancas/bedtime/releases):
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+(Or run the **Release** workflow manually from the Actions tab with a version like `v1.0.0`.) The workflow builds an Android release APK and an iOS `.ipa`, then attaches both to a GitHub Release.
+
+**Android signing (optional).** By default the APK is signed with the debug key — installable by sideloading, but not publishable to Google Play. To ship a properly-signed APK, add these repository secrets (Settings → Secrets and variables → Actions):
+
+| Secret                      | Description                         |
+| --------------------------- | ----------------------------------- |
+| `ANDROID_KEYSTORE_BASE64`   | `base64` of your `release.keystore` |
+| `ANDROID_KEYSTORE_PASSWORD` | keystore password                   |
+| `ANDROID_KEY_ALIAS`         | key alias                           |
+| `ANDROID_KEY_PASSWORD`      | key password                        |
+
+**iOS signing.** A device-installable `.ipa` requires an Apple Developer account and signing credentials, so the release ships an **unsigned** `.ipa`. Re-sign it (Xcode / AltStore / Sideloadly) to install directly, or use the [`eas-build.yml`](.github/workflows/eas-build.yml) workflow for a TestFlight-ready build.
 
 ## License
 
