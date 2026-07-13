@@ -46,7 +46,8 @@ export async function ensureChannels(): Promise<void> {
     importance: AndroidImportance.HIGH,
     sound: SOUND.warning.android,
     vibration: true,
-    vibrationPattern: [0, 300, 200, 300],
+    // notifee requires an even number of strictly-positive values (wait, vibrate, ...).
+    vibrationPattern: [300, 200, 300, 200],
   });
   await notifee.createChannel({
     id: BEDTIME_CHANNEL_ID,
@@ -55,7 +56,7 @@ export async function ensureChannels(): Promise<void> {
     importance: AndroidImportance.HIGH,
     sound: SOUND.bedtime.android,
     vibration: true,
-    vibrationPattern: [0, 600, 250, 600, 250, 600],
+    vibrationPattern: [600, 250, 600, 250, 600, 250],
   });
 }
 

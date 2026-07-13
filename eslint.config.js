@@ -24,4 +24,11 @@ module.exports = [
       'no-console': ['warn', { allow: ['warn', 'error'] }],
     },
   },
+  {
+    // Build/CI helper scripts run in Node and legitimately log to stdout.
+    files: ['scripts/**'],
+    rules: {
+      'no-console': 'off',
+    },
+  },
 ];

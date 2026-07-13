@@ -1,0 +1,188 @@
+name: Release
+
+# Builds installable production artifacts and publishes them to a GitHub Release
+# (the download page: https://github.com/prlancas/bedtime/releases).
+#
+# Trigger:
+#   - Push a tag like v1.0.0  ->  builds & publishes that version.
+#   - Run manually (workflow_dispatch) with a version, e.g. v1.0.0.
+#
+# Android signing (optional): set repository secrets to ship a Play-Store-ready,
+# properly-signed APK. Without them the APK is signed with the debug key, which
+# is still installable by sideloading.
+#   ANDROID_KEYSTORE_BASE64   - base64 of your release.keystore
+#   ANDROID_KEYSTORE_PASSWORD - keystore password
+#   ANDROID_KEY_ALIAS         - key alias
+#   ANDROID_KEY_PASSWORD      - key password
+#
+# iOS: producing a device-installable .ipa requires an Apple Developer account
+# and signing credentials, so this workflow ships an UNSIGNED .ipa. Re-sign it
+# (Xcode / AltStore / Sideloadly) to install, or use the EAS Build workflow for
+# a TestFlight-ready build.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release version tag (e.g. v1.0.0)
+        required: true
+        type: string
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  EXPO_NO_TELEMETRY: '1'
+
+jobs:
+  setup:
+    name: Resolve version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - id: v
+        run: echo "version=${{ github.event.inputs.version || github.ref_name }}" >> "$GITHUB_OUTPUT"
+
+  android:
+    name: Build Android (Release APK)
+    runs-on: ubuntu-latest
+    needs: setup
+    env:
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install dependencies
+        run: npm ci
+      - name: Prebuild (generate android project)
+        run: npx expo prebuild --platform android --no-install
+      - name: Configure release signing config
+        run: node scripts/configure-android-signing.mjs
+      - name: Provision release keystore
+        if: env.ANDROID_KEYSTORE_BASE64 != ''
+        run: |
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/release.keystore
+          {
+            echo "RELEASE_STORE_FILE=release.keystore"
+            echo "RELEASE_STORE_PASSWORD=$ANDROID_KEYSTORE_PASSWORD"
+            echo "RELEASE_KEY_ALIAS=$ANDROID_KEY_ALIAS"
+            echo "RELEASE_KEY_PASSWORD=$ANDROID_KEY_PASSWORD"
+          } >> android/gradle.properties
+      - name: Gradle assembleRelease
+        working-directory: android
+        run: ./gradlew assembleRelease --no-daemon --stacktrace
+      - name: Rename APK
+        run: |
+          mkdir -p artifacts
+          cp android/app/build/outputs/apk/release/app-release.apk \
+            "artifacts/bedtime-${{ needs.setup.outputs.version }}.apk"
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: bedtime-android
+          path: artifacts/*.apk
+          if-no-files-found: error
+
+  ios:
+    name: Build iOS (Unsigned IPA)
+    # macos-15 ships Xcode 16.x; React Native 0.86 requires Xcode >= 16.1.
+    runs-on: macos-15
+    needs: setup
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode >= 16.1
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Prebuild (generate ios project)
+        run: npx expo prebuild --platform ios --no-install
+      - name: CocoaPods install
+        working-directory: ios
+        run: pod install
+      - name: Resolve workspace & scheme
+        id: xc
+        run: |
+          WORKSPACE=$(ls -d ios/*.xcworkspace | head -1)
+          SCHEME=$(basename "$WORKSPACE" .xcworkspace)
+          echo "workspace=$WORKSPACE" >> "$GITHUB_OUTPUT"
+          echo "scheme=$SCHEME" >> "$GITHUB_OUTPUT"
+      - name: Archive (device, no code signing)
+        run: |
+          xcodebuild \
+            -workspace "${{ steps.xc.outputs.workspace }}" \
+            -scheme "${{ steps.xc.outputs.scheme }}" \
+            -configuration Release \
+            -sdk iphoneos \
+            -archivePath "$RUNNER_TEMP/Bedtime.xcarchive" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            archive
+      - name: Package unsigned IPA
+        run: |
+          APP=$(ls -d "$RUNNER_TEMP/Bedtime.xcarchive/Products/Applications/"*.app | head -1)
+          mkdir -p "$RUNNER_TEMP/Payload"
+          cp -R "$APP" "$RUNNER_TEMP/Payload/"
+          mkdir -p artifacts
+          (cd "$RUNNER_TEMP" && zip -qry "$GITHUB_WORKSPACE/artifacts/bedtime-${{ needs.setup.outputs.version }}-unsigned.ipa" Payload)
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: bedtime-ios
+          path: artifacts/*.ipa
+          if-no-files-found: error
+
+  release:
+    name: Publish GitHub Release
+    runs-on: ubuntu-latest
+    needs: [setup, android, ios]
+    permissions:
+      contents: write
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: List artifacts
+        run: ls -R artifacts
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.setup.outputs.version }}
+          name: Bedtime ${{ needs.setup.outputs.version }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            artifacts/*.apk
+            artifacts/*.ipa
+          body: |
+            ## Bedtime ${{ needs.setup.outputs.version }}
+
+            ### Downloads
+            | Platform | File | Notes |
+            | --- | --- | --- |
+            | Android | `bedtime-${{ needs.setup.outputs.version }}.apk` | Enable "Install unknown apps", then open the APK on your device. |
+            | iOS | `bedtime-${{ needs.setup.outputs.version }}-unsigned.ipa` | Unsigned — re-sign with Xcode/AltStore/Sideloadly to install, or use TestFlight via EAS. |
+
+            See the [README](https://github.com/prlancas/bedtime#readme) for install details.

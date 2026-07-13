@@ -9,7 +9,7 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.bedtime.app",
+      "bundleIdentifier": "com.prlancas.bedtime",
       "infoPlist": {
         "NSCameraUsageDescription": "Bedtime uses the camera to take a profile picture for each child.",
         "NSPhotoLibraryUsageDescription": "Bedtime lets you choose a profile picture for each child from your photos.",
@@ -17,7 +17,7 @@
       }
     },
     "android": {
-      "package": "com.bedtime.app",
+      "package": "com.prlancas.bedtime",
       "adaptiveIcon": {
         "backgroundColor": "#1E1B4B",
         "foregroundImage": "./assets/android-icon-foreground.png",
