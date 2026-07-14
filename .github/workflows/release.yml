@@ -72,7 +72,25 @@ jobs:
       - name: Prebuild (generate android project)
         run: npx expo prebuild --platform android --no-install
       - name: Configure release signing config
+        # Only needed when a real keystore is provided. Without secrets the
+        # release APK is debug-signed (still installable), so skip the
+        # build.gradle patch entirely to keep the default path identical to the
+        # (working) debug build.
+        if: env.ANDROID_KEYSTORE_BASE64 != ''
         run: node scripts/configure-android-signing.mjs
+      - name: Diagnose Expo inline-modules autolinking step
+        working-directory: android
+        run: |
+          echo "--- gradle.properties (inline modules) ---"
+          grep -n inlineModules gradle.properties || echo "(property not found)"
+          VAL=$(grep '^expo.inlineModules.watchedDirectories=' gradle.properties | head -1 | cut -d '=' -f2-)
+          echo "resolved value = [${VAL}]"
+          echo "--- run mirror-kotlin-inline-modules directly (surfaces hidden node error) ---"
+          node --no-warnings --eval "require('expo/bin/autolinking')" expo-modules-autolinking mirror-kotlin-inline-modules \
+            --kotlin-files-mirror-directory "$GITHUB_WORKSPACE/node_modules/expo/android/src/main/java/inline/modules" \
+            --inline-modules-list-directory "$GITHUB_WORKSPACE/node_modules/expo/android/build/inline/modules" \
+            --watched-directories-serialized "${VAL:-[]}" \
+            && echo "MIRROR OK" || echo "MIRROR FAILED EXIT=$?"
       - name: Provision release keystore
         if: env.ANDROID_KEYSTORE_BASE64 != ''
         run: |
@@ -83,19 +101,29 @@ jobs:
             echo "RELEASE_KEY_ALIAS=$ANDROID_KEY_ALIAS"
             echo "RELEASE_KEY_PASSWORD=$ANDROID_KEY_PASSWORD"
           } >> android/gradle.properties
-      - name: Gradle assembleRelease
+      - name: Gradle build (APK + AAB)
         working-directory: android
-        run: ./gradlew assembleRelease --no-daemon --stacktrace
-      - name: Rename APK
+        # assembleRelease -> APK for sideloading / the GitHub download page.
+        # bundleRelease   -> AAB for uploading to Google Play.
+        # Force a valid empty inline-modules list. Expo's autolinking runs a
+        # `node` "mirror-kotlin-inline-modules" step at configure time that
+        # JSON.parses this property; an empty/missing value crashes it with a
+        # silent (Gradle-swallowed) node exit 1. -P overrides gradle.properties.
+        run: ./gradlew assembleRelease bundleRelease --no-daemon --stacktrace "-Pexpo.inlineModules.watchedDirectories=[]"
+      - name: Collect Android artifacts
         run: |
           mkdir -p artifacts
           cp android/app/build/outputs/apk/release/app-release.apk \
             "artifacts/bedtime-${{ needs.setup.outputs.version }}.apk"
-      - name: Upload APK
+          cp android/app/build/outputs/bundle/release/app-release.aab \
+            "artifacts/bedtime-${{ needs.setup.outputs.version }}.aab"
+      - name: Upload Android artifacts
         uses: actions/upload-artifact@v4
         with:
           name: bedtime-android
-          path: artifacts/*.apk
+          path: |
+            artifacts/*.apk
+            artifacts/*.aab
           if-no-files-found: error
 
   ios:
@@ -175,14 +203,16 @@ jobs:
           fail_on_unmatched_files: true
           files: |
             artifacts/*.apk
+            artifacts/*.aab
             artifacts/*.ipa
           body: |
             ## Bedtime ${{ needs.setup.outputs.version }}
 
             ### Downloads
-            | Platform | File | Notes |
+            | File | Use for | Notes |
             | --- | --- | --- |
-            | Android | `bedtime-${{ needs.setup.outputs.version }}.apk` | Enable "Install unknown apps", then open the APK on your device. |
-            | iOS | `bedtime-${{ needs.setup.outputs.version }}-unsigned.ipa` | Unsigned — re-sign with Xcode/AltStore/Sideloadly to install, or use TestFlight via EAS. |
+            | `bedtime-${{ needs.setup.outputs.version }}.apk` | Android sideload | Enable "Install unknown apps", then open the APK on your device. |
+            | `bedtime-${{ needs.setup.outputs.version }}.aab` | Google Play | Upload this to the Play Console (Play requires an `.aab`, not an APK). |
+            | `bedtime-${{ needs.setup.outputs.version }}-unsigned.ipa` | iOS | Unsigned — re-sign with Xcode/AltStore/Sideloadly to install, or use TestFlight via EAS. |
 
             See the [README](https://github.com/prlancas/bedtime#readme) for install details.
