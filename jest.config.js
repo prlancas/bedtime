@@ -16,7 +16,7 @@ module.exports = {
   // Scope coverage to the pure logic that these unit tests exercise. UI, DB,
   // and native-module wrappers (alarms/photos/sound) are validated via builds
   // and on-device testing rather than unit coverage.
-  collectCoverageFrom: ['lib/bedtime.ts', 'lib/time.ts'],
+  collectCoverageFrom: ['lib/bedtime.ts', 'lib/time.ts', 'lib/stars.ts', 'lib/lastAction.ts'],
   coverageThreshold: {
     global: {
       statements: 90,

@@ -25,14 +25,41 @@ before writing native/Expo code** (especially `expo-audio`, `expo-sqlite`,
 
 ## Commands
 
+Use Node via asdf: `export ASDF_NODEJS_VERSION=24.0.0` (see `.tool-versions`).
+
+### ALWAYS run these checks before finishing or committing
+
+CI (`.github/workflows/build.yml`, job "Lint, typecheck & test") runs the
+commands below **and fails the whole build on the first failure**. Run the exact
+same npm scripts locally so you don't break CI — do not substitute looser
+variants:
+
 ```bash
-npx tsc --noEmit        # typecheck
-npx eslint .            # lint (eslint.config.js; scripts/ may console.log)
-npx jest                # unit tests (node env + babel-jest; pure logic only)
-npx expo run:android    # local dev build (needs Java 17 via .tool-versions)
+npm run format:check   # prettier --check .  (whole repo — NOT `prettier --write` on a few globs!)
+npm run lint           # eslint .            (must be 0 errors; warnings are allowed)
+npm run typecheck      # tsc --noEmit
+npm run test:ci        # jest --coverage — ENFORCES coverage thresholds (jest.config.js)
+npx expo config --type public > /dev/null   # validates app.json
 ```
 
-Use Node via asdf: `export ASDF_NODEJS_VERSION=24.0.0` (see `.tool-versions`).
+Gotchas that have bitten us:
+
+- **Formatting:** `format:check` checks the _entire repo_ (incl. `app.json`,
+  which `expo install` reformats). Fix with `npm run format` (`prettier --write .`),
+  never a hand-picked glob.
+- **Coverage:** `test:ci` enforces thresholds over `collectCoverageFrom`
+  (`lib/bedtime.ts`, `lib/time.ts`, `lib/stars.ts`, `lib/lastAction.ts`). Plain
+  `npx jest` does NOT check coverage, so it can pass while CI fails. When you add
+  a pure `lib/*` function, add a unit test (and add the file to
+  `collectCoverageFrom` if it's new pure logic).
+- Capturing exit codes: don't pipe a command through `tail`/`head` when checking
+  `$?` — the pipe returns the pager's exit code and hides real failures.
+
+Other:
+
+```bash
+npx expo run:android    # local dev build (needs Java 17 via .tool-versions)
+```
 
 ### Typed routes
 

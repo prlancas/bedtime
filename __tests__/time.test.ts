@@ -4,10 +4,13 @@ import {
   addDays,
   clamp,
   dateAtMinutes,
+  dateFromKey,
   dateKey,
+  formatDate,
   formatTime,
   isWeekendNight,
   minutesFromDate,
+  weekdayLabel,
 } from '@/lib/time';
 import { countdownLabel } from '@/lib/useNow';
 
@@ -61,6 +64,25 @@ describe('date helpers', () => {
     expect(d.getHours()).toBe(19);
     expect(d.getMinutes()).toBe(30);
     expect(minutesFromDate(d)).toBe(1170);
+  });
+
+  it('labels weekdays', () => {
+    expect(weekdayLabel(WED)).toBe('Wed');
+    expect(weekdayLabel(FRI)).toBe('Fri');
+    expect(weekdayLabel(SAT)).toBe('Sat');
+  });
+
+  it('formats a friendly date', () => {
+    expect(formatDate(FRI)).toBe('Fri 10 Jul');
+    expect(formatDate(WED)).toBe('Wed 8 Jul');
+  });
+
+  it('parses a YYYY-MM-DD key back into a local date', () => {
+    const d = dateFromKey('2026-07-10');
+    expect(d.getFullYear()).toBe(2026);
+    expect(d.getMonth()).toBe(6);
+    expect(d.getDate()).toBe(10);
+    expect(dateKey(d)).toBe('2026-07-10');
   });
 });
 
