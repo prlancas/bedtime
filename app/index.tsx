@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Text, View } from 'react-native';
 import { Link, router, useFocusEffect } from 'expo-router';
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 
 import { Button } from '@/components/Button';
 import { ChildTonightCard } from '@/components/ChildTonightCard';
@@ -16,9 +16,16 @@ export default function Dashboard() {
   const now = useNow();
   const children = useStore((s) => s.children);
   const reload = useStore((s) => s.reload);
+  const ready = useStore((s) => s.ready);
+  const tourSeen = useStore((s) => s.settings?.tourSeen);
   const kids = activeChildren(children);
 
   useFocusEffect(useCallback(() => reload(), [reload]));
+
+  // Show the tour once on first launch.
+  useEffect(() => {
+    if (ready && tourSeen === false) router.push('/tour');
+  }, [ready, tourSeen]);
 
   const nowMin = minutesFromDate(now);
   const greeting =
@@ -65,6 +72,30 @@ export default function Dashboard() {
                 onPress={() => router.push('/assess')}
               />
             )}
+            <Button
+              label="Stars & rewards"
+              variant="treat"
+              icon={<Ionicons name="star" size={18} color="#1E1B4B" />}
+              onPress={() => router.push('/rewards')}
+            />
+            <View className="flex-row gap-3">
+              <View className="flex-1">
+                <Button
+                  label="Planner"
+                  variant="ghost"
+                  icon={<Ionicons name="calendar" size={18} color="#E0E3FF" />}
+                  onPress={() => router.push('/schedule')}
+                />
+              </View>
+              <View className="flex-1">
+                <Button
+                  label="Clubs"
+                  variant="ghost"
+                  icon={<Ionicons name="ribbon" size={18} color="#E0E3FF" />}
+                  onPress={() => router.push('/clubs')}
+                />
+              </View>
+            </View>
             <View className="flex-row gap-3">
               <View className="flex-1">
                 <Button
@@ -80,6 +111,14 @@ export default function Dashboard() {
                   variant="ghost"
                   icon={<Ionicons name="bar-chart" size={18} color="#E0E3FF" />}
                   onPress={() => router.push('/history')}
+                />
+              </View>
+              <View className="flex-1">
+                <Button
+                  label="Pause"
+                  variant="ghost"
+                  icon={<Ionicons name="pause" size={18} color="#E0E3FF" />}
+                  onPress={() => router.push('/pause')}
                 />
               </View>
             </View>

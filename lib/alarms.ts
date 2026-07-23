@@ -8,15 +8,16 @@ import notifee, {
   type TimestampTrigger,
 } from 'react-native-notify-kit';
 
-import { getSettings, listChildren } from '@/db/repo';
-import type { Child } from '@/db/schema';
-import { effectiveBedtime } from '@/lib/bedtime';
+import { clubsForDate, getChild, getSettings, listChildren } from '@/db/repo';
+import type { Child, Club } from '@/db/schema';
+import { effectiveBedtime, isBedtimePaused } from '@/lib/bedtime';
 import { addDays, dateAtMinutes, dateKey, formatTime } from '@/lib/time';
 
 export type AlarmKind = 'warning' | 'bedtime';
 
 export const WARNING_CHANNEL_ID = 'warning-alarm';
 export const BEDTIME_CHANNEL_ID = 'bedtime-alarm';
+export const CLUB_CHANNEL_ID = 'club-reminder';
 
 /** How many days ahead we pre-schedule (rescheduled whenever data changes). */
 const SCHEDULE_DAYS = 3;
@@ -57,6 +58,15 @@ export async function ensureChannels(): Promise<void> {
     sound: SOUND.bedtime.android,
     vibration: true,
     vibrationPattern: [600, 250, 600, 250, 600, 250],
+  });
+  await notifee.createChannel({
+    id: CLUB_CHANNEL_ID,
+    name: 'Club & activity reminders',
+    description: 'Reminders for clubs and activities.',
+    importance: AndroidImportance.HIGH,
+    sound: SOUND.warning.android,
+    vibration: true,
+    vibrationPattern: [300, 200, 300, 200],
   });
 }
 
@@ -122,6 +132,9 @@ export async function scheduleAllAlarms(): Promise<void> {
     for (let i = 0; i < SCHEDULE_DAYS; i += 1) {
       const day = addDays(new Date(), i);
       const date = dateKey(day);
+      // Skip nights where this child's bedtime is paused (holiday, illness, ...).
+      if (isBedtimePaused(child.bedtimePausedUntil, day)) continue;
+
       const bedtimeMin = effectiveBedtime(child.baseBedtimeMinutes, day, settings);
       const warningMin = bedtimeMin - child.warningLeadMinutes;
 
@@ -132,6 +145,58 @@ export async function scheduleAllAlarms(): Promise<void> {
       if (bedtimeAt.getTime() > now) await scheduleOne(child, 'bedtime', bedtimeAt, date);
     }
   }
+
+  // Club / activity reminders for the same window (respects holiday muting).
+  for (let i = 0; i < SCHEDULE_DAYS; i += 1) {
+    const day = addDays(new Date(), i);
+    const date = dateKey(day);
+    for (const club of clubsForDate(day)) {
+      const warnAt = dateAtMinutes(club.startMinutes - club.warningLeadMinutes, day);
+      const startAt = dateAtMinutes(club.startMinutes, day);
+      if (warnAt.getTime() > now) await scheduleClub(club, 'warning', warnAt, date);
+      if (startAt.getTime() > now) await scheduleClub(club, 'start', startAt, date);
+    }
+  }
+}
+
+async function scheduleClub(
+  club: Club,
+  kind: 'warning' | 'start',
+  when: Date,
+  date: string,
+): Promise<void> {
+  const childName = club.childId ? getChild(club.childId)?.name : undefined;
+  const who = childName ? `${childName}'s ` : '';
+  const timeLabel = formatTime(club.startMinutes);
+  const lead = club.warningLeadMinutes;
+  await notifee.createTriggerNotification(
+    {
+      id: `club-${kind}-${club.id}-${date}`,
+      title:
+        kind === 'start'
+          ? `\u{1F3C6} ${who}${club.name} now!`
+          : `\u{1F4C6} ${who}${club.name} soon`,
+      body:
+        kind === 'start'
+          ? `${club.name} starts at ${timeLabel}.`
+          : `${lead} minutes until ${club.name} (${timeLabel}). Time to get ready!`,
+      data: { clubId: String(club.id), kind: `club-${kind}`, date },
+      android: {
+        channelId: CLUB_CHANNEL_ID,
+        category: AndroidCategory.REMINDER,
+        importance: AndroidImportance.HIGH,
+        visibility: AndroidVisibility.PUBLIC,
+        color: club.color,
+        autoCancel: true,
+        pressAction: { id: 'default', launchActivity: 'default' },
+      },
+      ios: {
+        sound: SOUND.warning.ios,
+        interruptionLevel: 'timeSensitive',
+      },
+    },
+    buildTrigger(when.getTime()),
+  );
 }
 
 export async function cancelAllAlarms(): Promise<void> {

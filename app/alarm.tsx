@@ -14,10 +14,31 @@ import notifee from 'react-native-notify-kit';
 
 import { Avatar } from '@/components/Avatar';
 import { Button } from '@/components/Button';
+import type { Child } from '@/db/schema';
 import { childrenForAlarm, type AlarmKind } from '@/lib/alarms';
-import { playSound, stopSound } from '@/lib/sound';
+import { playSequence, stopSound, type SoundSpec } from '@/lib/sound';
 import { formatTime, minutesFromDate } from '@/lib/time';
 import { activeChildren, useStore } from '@/store/useStore';
+
+/**
+ * The distinct sounds to play for the children whose alarm is firing. Each
+ * child's chosen sound is included once (identical sounds are de-duplicated) so
+ * that when two children coincide their different sounds play in sequence.
+ */
+function soundsForKids(kids: Child[], kind: AlarmKind): SoundSpec[] {
+  const specs: SoundSpec[] = [];
+  const seen = new Set<string>();
+  for (const child of kids) {
+    const name = kind === 'bedtime' ? child.bedtimeSound : child.warningSound;
+    const uri = kind === 'bedtime' ? child.bedtimeSoundUri : child.warningSoundUri;
+    const spec: SoundSpec = name === 'custom' && uri ? { uri } : { builtin: name };
+    const key = spec.uri ?? `builtin:${spec.builtin}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    specs.push(spec);
+  }
+  return specs;
+}
 
 export default function Alarm() {
   const params = useLocalSearchParams<{ kind?: string }>();
@@ -34,8 +55,10 @@ export default function Alarm() {
       -1,
       true,
     );
-    playSound(kind === 'bedtime' ? 'bedtime' : 'warning', kind === 'bedtime');
+    const specs = soundsForKids(kids, kind);
+    playSequence(specs.length ? specs : [{ builtin: kind }], kind === 'bedtime');
     return () => stopSound();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kind, pulse]);
 
   const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));

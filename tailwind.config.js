@@ -23,6 +23,7 @@ module.exports = {
         good: '#34D399',
         bad: '#FB7185',
         treat: '#F472B6',
+        activity: '#38BDF8',
       },
       fontFamily: {
         rounded: ['System'],

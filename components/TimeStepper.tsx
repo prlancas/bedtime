@@ -88,39 +88,3 @@ export function NumberStepper({
     </View>
   );
 }
-
-export function SoundPicker({
-  label,
-  value,
-  onChange,
-  onPreview,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  onPreview: (v: string) => void;
-}) {
-  const options = ['warning', 'bedtime'];
-  return (
-    <View>
-      <Text className="mb-2 text-sm font-semibold text-night-300">{label}</Text>
-      <View className="flex-row gap-2">
-        {options.map((opt) => (
-          <Pressable
-            key={opt}
-            onPress={() => {
-              onChange(opt);
-              onPreview(opt);
-            }}
-            className={`flex-1 flex-row items-center justify-center gap-2 rounded-2xl px-3 py-3 active:opacity-70 ${
-              value === opt ? 'bg-night-400' : 'bg-night-900'
-            }`}
-          >
-            <Ionicons name={opt === 'bedtime' ? 'alarm' : 'notifications'} size={16} color="#fff" />
-            <Text className="font-bold capitalize text-white">{opt}</Text>
-          </Pressable>
-        ))}
-      </View>
-    </View>
-  );
-}

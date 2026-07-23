@@ -15,13 +15,16 @@ import {
   getSettings,
   listReasons,
   listRecords,
+  pendingPromiseCount,
   reasonStats,
   recordsSince,
   revokeGood,
+  starBalance,
   streak,
 } from '@/db/repo';
 import type { BedtimeRecord, Reason } from '@/db/schema';
 import { effectiveBedtime } from '@/lib/bedtime';
+import { describeLastAction, shouldOfferDoTheSame } from '@/lib/lastAction';
 import { addDays, dateKey, formatTime } from '@/lib/time';
 import { useStore } from '@/store/useStore';
 
@@ -29,6 +32,10 @@ export default function ChildDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const childId = Number(id);
   const refresh = useStore((s) => s.refresh);
+  const recordAction = useStore((s) => s.recordAction);
+  const applyLastActionTo = useStore((s) => s.applyLastActionTo);
+  const lastAction = useStore((s) => s.lastAction);
+  const flags = useStore((s) => s.settings);
   const [, setTick] = useState(0);
 
   useFocusEffect(useCallback(() => setTick((t) => t + 1), []));
@@ -51,9 +58,13 @@ export default function ChildDetail() {
   const reasons = reasonStats(childId);
   const allReasons = listReasons();
   const reasonById = new Map<number, string>(allReasons.map((r: Reason) => [r.id, r.text]));
+  const bank = starBalance(childId).bank;
+  const promisesPending = pendingPromiseCount(childId);
+  const offerSame = !!flags?.featureDoTheSame && shouldOfferDoTheSame(lastAction, childId);
 
   async function treat() {
     addAdjustment(childId, 'treat');
+    recordAction({ type: 'treat', childId, ts: Date.now() });
     await refresh();
     setTick((t) => t + 1);
     Alert.alert(
@@ -64,12 +75,19 @@ export default function ChildDetail() {
 
   async function penalty() {
     addAdjustment(childId, 'penalty');
+    recordAction({ type: 'penalty', childId, ts: Date.now() });
     await refresh();
     setTick((t) => t + 1);
     Alert.alert(
       'Penalty added',
       `${child!.name}'s bedtime moved earlier by ${settings.badDeltaMinutes} min.`,
     );
+  }
+
+  async function doTheSame() {
+    await applyLastActionTo(childId);
+    setTick((t) => t + 1);
+    Alert.alert('Done ✅', `Applied the same to ${child!.name}.`);
   }
 
   function confirmRevoke(record: BedtimeRecord) {
@@ -98,6 +116,19 @@ export default function ChildDetail() {
         back
         right={[{ icon: 'create', onPress: () => router.push(`/kids/edit?id=${childId}`) }]}
       />
+
+      {offerSame && lastAction && (
+        <Pressable onPress={doTheSame} className="mb-4 active:opacity-80">
+          <Card className="flex-row items-center gap-3 border border-moon/40">
+            <Ionicons name="copy" size={22} color="#FDE68A" />
+            <View className="flex-1">
+              <Text className="text-sm font-bold text-moon">Do the same for {child.name}?</Text>
+              <Text className="text-xs text-night-300">{describeLastAction(lastAction)}</Text>
+            </View>
+            <Ionicons name="arrow-forward-circle" size={24} color="#FDE68A" />
+          </Card>
+        </Pressable>
+      )}
 
       <Card className="items-center">
         <Avatar name={child.name} photoUri={child.photoUri} color={child.color} size={88} />
@@ -130,6 +161,63 @@ export default function ChildDetail() {
           icon={<Ionicons name="checkmark-done" size={18} color="#fff" />}
           onPress={() => router.push(`/assess?childId=${childId}`)}
         />
+      </Card>
+
+      <Card className="mt-4">
+        <View className="mb-3 flex-row items-center justify-between">
+          <Text className="text-base font-bold text-white">Stars & rewards</Text>
+          <Text className={`text-lg font-black ${bank < 0 ? 'text-bad' : 'text-star'}`}>
+            {bank}★{bank < 0 ? ' (debt)' : ''}
+          </Text>
+        </View>
+        <View className="flex-row gap-2">
+          <View className="flex-1">
+            <Button
+              label="Star"
+              variant="good"
+              icon={<Ionicons name="star" size={16} color="#1E1B4B" />}
+              onPress={() =>
+                router.push({
+                  pathname: '/star-award',
+                  params: { childId: String(childId), kind: 'good' },
+                })
+              }
+            />
+          </View>
+          <View className="flex-1">
+            <Button
+              label="Slip-up"
+              variant="bad"
+              icon={<Ionicons name="cloud" size={16} color="#1E1B4B" />}
+              onPress={() =>
+                router.push({
+                  pathname: '/star-award',
+                  params: { childId: String(childId), kind: 'slip' },
+                })
+              }
+            />
+          </View>
+        </View>
+        {flags?.featureShop && (
+          <Button
+            className="mt-2"
+            label="Star shop"
+            variant="treat"
+            icon={<Ionicons name="cart" size={16} color="#1E1B4B" />}
+            onPress={() => router.push({ pathname: '/shop', params: { childId: String(childId) } })}
+          />
+        )}
+        {flags?.featurePinkyPromises && (
+          <Button
+            className="mt-2"
+            label={promisesPending > 0 ? `Pinky promises (${promisesPending})` : 'Pinky promise'}
+            variant="ghost"
+            icon={<Ionicons name="hand-left" size={16} color="#E0E3FF" />}
+            onPress={() =>
+              router.push({ pathname: '/promise', params: { childId: String(childId) } })
+            }
+          />
+        )}
       </Card>
 
       <Text className="mb-2 mt-6 text-lg font-bold text-white">Bedtime over time</Text>

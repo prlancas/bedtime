@@ -5,6 +5,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useQuickActionRouting } from 'expo-quick-actions/router';
 import notifee, { EventType } from 'react-native-notify-kit';
 
 import { useStore } from '@/store/useStore';
@@ -22,6 +23,9 @@ function openAlarm(kind: AlarmKind | undefined) {
 
 export default function RootLayout() {
   const init = useStore((s) => s.init);
+
+  // Route home-screen / app-icon quick actions to their `params.href`.
+  useQuickActionRouting();
 
   useEffect(() => {
     void init();
@@ -58,6 +62,17 @@ export default function RootLayout() {
             options={{ presentation: 'fullScreenModal', animation: 'fade' }}
           />
           <Stack.Screen name="assess" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="star-award" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="redeem" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="promise" options={{ presentation: 'modal' }} />
+          <Stack.Screen
+            name="reward-earned"
+            options={{ presentation: 'fullScreenModal', animation: 'fade' }}
+          />
+          <Stack.Screen
+            name="tour"
+            options={{ presentation: 'fullScreenModal', animation: 'fade' }}
+          />
         </Stack>
       </SafeAreaProvider>
     </GestureHandlerRootView>

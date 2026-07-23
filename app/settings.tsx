@@ -35,6 +35,10 @@ function SettingsInner() {
   const [maxB, setMaxB] = useState(stored.maxBedtimeMinutes);
   const [pinEnabled, setPinEnabled] = useState(stored.pinEnabled);
   const [pin, setPin] = useState('');
+  const [pinky, setPinky] = useState(stored.featurePinkyPromises);
+  const [shop, setShop] = useState(stored.featureShop);
+  const [shortcuts, setShortcuts] = useState(stored.featureHomeShortcuts);
+  const [doSame, setDoSame] = useState(stored.featureDoTheSame);
 
   async function save() {
     if (minB >= maxB) {
@@ -63,6 +67,10 @@ function SettingsInner() {
       maxBedtimeMinutes: maxB,
       pinEnabled,
       pinHash,
+      featurePinkyPromises: pinky,
+      featureShop: shop,
+      featureHomeShortcuts: shortcuts,
+      featureDoTheSame: doSame,
     });
     reload();
     await scheduleAllAlarms();
@@ -124,6 +132,40 @@ function SettingsInner() {
         </Text>
       </Card>
 
+      <Text className="mb-2 mt-6 text-lg font-bold text-white">Features</Text>
+      <Card className="gap-3">
+        <FeatureToggle
+          label="Pinky promises"
+          hint="Seal little promises with a tappable pinky and log them."
+          value={pinky}
+          onChange={setPinky}
+        />
+        <FeatureToggle
+          label="Star shop"
+          hint="Let kids cash in stars for rewards you configure."
+          value={shop}
+          onChange={setShop}
+        />
+        <FeatureToggle
+          label="“Do the same” shortcut"
+          hint="Repeat your last action on another child within a few minutes."
+          value={doSame}
+          onChange={setDoSame}
+        />
+        <FeatureToggle
+          label="Home screen shortcuts"
+          hint="Add per-child app-icon shortcuts (long-press the app icon)."
+          value={shortcuts}
+          onChange={setShortcuts}
+        />
+        <Button
+          label="Replay the tour"
+          variant="ghost"
+          icon={<Ionicons name="compass" size={18} color="#E0E3FF" />}
+          onPress={() => router.push('/tour')}
+        />
+      </Card>
+
       <Text className="mb-2 mt-6 text-lg font-bold text-white">Security</Text>
       <Card className="gap-3">
         <View className="flex-row items-center justify-between">
@@ -151,11 +193,39 @@ function SettingsInner() {
           onPress={() => router.push('/reasons')}
         />
         <Button
+          label="Rewards & goals"
+          variant="ghost"
+          icon={<Ionicons name="gift" size={18} color="#E0E3FF" />}
+          onPress={() => router.push('/goals')}
+        />
+        <Button
           label="Save settings"
           icon={<Ionicons name="save" size={18} color="#fff" />}
           onPress={save}
         />
       </View>
     </Screen>
+  );
+}
+
+function FeatureToggle({
+  label,
+  hint,
+  value,
+  onChange,
+}: {
+  label: string;
+  hint: string;
+  value: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <View className="flex-row items-center justify-between gap-3">
+      <View className="flex-1">
+        <Text className="text-base text-white">{label}</Text>
+        <Text className="text-xs text-night-300">{hint}</Text>
+      </View>
+      <Switch value={value} onValueChange={onChange} />
+    </View>
   );
 }

@@ -1,14 +1,23 @@
-import { and, desc, eq, gte, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, isNull, lte, or, sql } from 'drizzle-orm';
 
 import { db } from './client';
 import {
   adjustments,
   bedtimeRecords,
   children,
+  clubPauses,
+  clubs,
+  pinkyPromises,
   reasons,
+  redemptions,
   settings,
+  starEvents,
+  starGoals,
+  starReasons,
   type Child,
+  type Club,
   type NewChild,
+  type NewClub,
   type Settings,
 } from './schema';
 import { applyAdjustment, applyOutcome, effectiveBedtime, type Outcome } from '@/lib/bedtime';
@@ -239,4 +248,323 @@ export function streak(childId: number): number {
     else break;
   }
   return count;
+}
+
+// ---------- Bedtime pause ----------
+
+/**
+ * Suppress bedtime alarms for a child (or all children when childId is null)
+ * through the given inclusive date. Pass null for `untilDate` to resume.
+ */
+export function setBedtimePause(childId: number | null, untilDate: string | null): void {
+  const patch = { bedtimePausedUntil: untilDate };
+  if (childId == null) {
+    db.update(children).set(patch).run();
+  } else {
+    db.update(children).set(patch).where(eq(children.id, childId)).run();
+  }
+}
+
+// ---------- Star reasons ----------
+
+export function listStarReasons(kind?: 'good' | 'slip') {
+  const q = db.select().from(starReasons);
+  return (kind ? q.where(eq(starReasons.kind, kind)) : q).orderBy(starReasons.text).all();
+}
+
+/** Insert or update a reason, remembering the star amount last used for it. */
+export function upsertStarReason(
+  text: string,
+  kind: 'good' | 'slip',
+  defaultStars: number,
+): number {
+  const trimmed = text.trim();
+  const existing = db.select().from(starReasons).where(eq(starReasons.text, trimmed)).get();
+  if (existing) {
+    db.update(starReasons).set({ defaultStars, kind }).where(eq(starReasons.id, existing.id)).run();
+    return existing.id;
+  }
+  const res = db.insert(starReasons).values({ text: trimmed, kind, defaultStars }).run();
+  return Number(res.lastInsertRowId);
+}
+
+export function deleteStarReason(id: number): void {
+  db.delete(starReasons).where(eq(starReasons.id, id)).run();
+}
+
+// ---------- Star events ----------
+
+export interface StarInput {
+  childId: number;
+  kind: 'good' | 'slip';
+  stars: number; // magnitude (always positive); sign is derived from kind
+  reasonText?: string;
+  note?: string;
+}
+
+/** Record a good deed (+stars) or a slip-up (-stars) for a child. */
+export function addStarEvent(input: StarInput): void {
+  const magnitude = Math.abs(input.stars);
+  const signed = input.kind === 'good' ? magnitude : -magnitude;
+  const reasonId = input.reasonText?.trim()
+    ? upsertStarReason(input.reasonText, input.kind, magnitude)
+    : null;
+  db.insert(starEvents)
+    .values({
+      childId: input.childId,
+      date: dateKey(),
+      stars: signed,
+      kind: input.kind,
+      reasonId,
+      note: input.note ?? null,
+    })
+    .run();
+}
+
+export function deleteStarEvent(id: number): void {
+  db.delete(starEvents).where(eq(starEvents.id, id)).run();
+}
+
+export function listStarEvents(childId: number, limit = 60) {
+  return db
+    .select()
+    .from(starEvents)
+    .where(eq(starEvents.childId, childId))
+    .orderBy(desc(starEvents.createdAt))
+    .limit(limit)
+    .all();
+}
+
+function sumStars(childId: number): number {
+  const row = db
+    .select({ total: sql<number>`coalesce(sum(${starEvents.stars}), 0)` })
+    .from(starEvents)
+    .where(eq(starEvents.childId, childId))
+    .get();
+  return row?.total ?? 0;
+}
+
+function sumRedeemed(childId: number): number {
+  const row = db
+    .select({ total: sql<number>`coalesce(sum(${redemptions.stars}), 0)` })
+    .from(redemptions)
+    .where(eq(redemptions.childId, childId))
+    .get();
+  return row?.total ?? 0;
+}
+
+export interface StarBalance {
+  earned: number; // net of good minus slip
+  redeemed: number;
+  bank: number; // available to spend
+}
+
+/** Current star position for a child: net earned, total redeemed, and bank. */
+export function starBalance(childId: number): StarBalance {
+  const earned = sumStars(childId);
+  const redeemed = sumRedeemed(childId);
+  return { earned, redeemed, bank: earned - redeemed };
+}
+
+/** Usage counts per star reason (optionally for one child), most used first. */
+export function starReasonStats(childId?: number) {
+  return db
+    .select({
+      reason: starReasons.text,
+      kind: starReasons.kind,
+      count: sql<number>`count(${starEvents.id})`,
+      stars: sql<number>`coalesce(sum(${starEvents.stars}), 0)`,
+    })
+    .from(starEvents)
+    .innerJoin(starReasons, eq(starEvents.reasonId, starReasons.id))
+    .where(childId != null ? eq(starEvents.childId, childId) : undefined)
+    .groupBy(starReasons.text, starReasons.kind)
+    .orderBy(desc(sql`count(${starEvents.id})`))
+    .all();
+}
+
+// ---------- Goals ----------
+
+export function listGoals(activeOnly = false) {
+  const q = db.select().from(starGoals);
+  return (activeOnly ? q.where(eq(starGoals.active, true)) : q)
+    .orderBy(starGoals.starCost, starGoals.sortOrder)
+    .all();
+}
+
+export function addGoal(name: string, starCost: number, emoji = '🎁'): number {
+  const res = db.insert(starGoals).values({ name: name.trim(), starCost, emoji }).run();
+  return Number(res.lastInsertRowId);
+}
+
+export function updateGoal(
+  id: number,
+  patch: Partial<{ name: string; starCost: number; emoji: string; active: boolean }>,
+): void {
+  db.update(starGoals).set(patch).where(eq(starGoals.id, id)).run();
+}
+
+export function deleteGoal(id: number): void {
+  db.delete(starGoals).where(eq(starGoals.id, id)).run();
+}
+
+// ---------- Redemptions ----------
+
+export interface RedeemInput {
+  childId: number;
+  stars: number; // positive count spent
+  goalId?: number | null;
+  note?: string;
+}
+
+export function addRedemption(input: RedeemInput): void {
+  db.insert(redemptions)
+    .values({
+      childId: input.childId,
+      date: dateKey(),
+      stars: Math.abs(input.stars),
+      goalId: input.goalId ?? null,
+      note: input.note ?? null,
+    })
+    .run();
+}
+
+export function deleteRedemption(id: number): void {
+  db.delete(redemptions).where(eq(redemptions.id, id)).run();
+}
+
+/** Redemption history for a child with the goal name resolved (if any). */
+export function listRedemptions(childId: number, limit = 60) {
+  return db
+    .select({
+      id: redemptions.id,
+      date: redemptions.date,
+      stars: redemptions.stars,
+      note: redemptions.note,
+      createdAt: redemptions.createdAt,
+      goalName: starGoals.name,
+      goalEmoji: starGoals.emoji,
+    })
+    .from(redemptions)
+    .leftJoin(starGoals, eq(redemptions.goalId, starGoals.id))
+    .where(eq(redemptions.childId, childId))
+    .orderBy(desc(redemptions.createdAt))
+    .limit(limit)
+    .all();
+}
+
+// ---------- Clubs ----------
+
+export function listClubs(activeOnly = false): Club[] {
+  const q = db.select().from(clubs);
+  return (activeOnly ? q.where(eq(clubs.active, true)) : q)
+    .orderBy(clubs.weekday, clubs.startMinutes)
+    .all();
+}
+
+export function getClub(id: number): Club | undefined {
+  return db.select().from(clubs).where(eq(clubs.id, id)).get();
+}
+
+export function createClub(data: Omit<NewClub, 'id'>): number {
+  const res = db.insert(clubs).values(data).run();
+  return Number(res.lastInsertRowId);
+}
+
+export function updateClub(id: number, patch: Partial<NewClub>): void {
+  db.update(clubs).set(patch).where(eq(clubs.id, id)).run();
+}
+
+export function deleteClub(id: number): void {
+  db.delete(clubs).where(eq(clubs.id, id)).run();
+}
+
+// ---------- Club pauses (holidays) ----------
+
+export function listClubPauses() {
+  return db.select().from(clubPauses).orderBy(desc(clubPauses.startDate)).all();
+}
+
+export function addClubPause(input: {
+  clubId?: number | null;
+  startDate: string;
+  endDate: string;
+  note?: string;
+}): void {
+  db.insert(clubPauses)
+    .values({
+      clubId: input.clubId ?? null,
+      startDate: input.startDate,
+      endDate: input.endDate,
+      note: input.note ?? null,
+    })
+    .run();
+}
+
+export function deleteClubPause(id: number): void {
+  db.delete(clubPauses).where(eq(clubPauses.id, id)).run();
+}
+
+/** True if `date` (YYYY-MM-DD) falls in a holiday range muting this club. */
+export function isClubMuted(clubId: number, date: string): boolean {
+  const row = db
+    .select({ id: clubPauses.id })
+    .from(clubPauses)
+    .where(
+      and(
+        or(isNull(clubPauses.clubId), eq(clubPauses.clubId, clubId)),
+        lte(clubPauses.startDate, date),
+        gte(clubPauses.endDate, date),
+      ),
+    )
+    .get();
+  return !!row;
+}
+
+/** Active clubs occurring on the given date's weekday that are not muted. */
+export function clubsForDate(date: Date): Club[] {
+  const key = dateKey(date);
+  const weekday = date.getDay();
+  return db
+    .select()
+    .from(clubs)
+    .where(and(eq(clubs.active, true), eq(clubs.weekday, weekday)))
+    .orderBy(asc(clubs.startMinutes))
+    .all()
+    .filter((c) => !isClubMuted(c.id, key));
+}
+
+// ---------- Pinky promises ----------
+
+export function addPromise(childId: number, text: string): number {
+  const res = db.insert(pinkyPromises).values({ childId, text: text.trim() }).run();
+  return Number(res.lastInsertRowId);
+}
+
+export function listPromises(childId: number, limit = 60) {
+  return db
+    .select()
+    .from(pinkyPromises)
+    .where(eq(pinkyPromises.childId, childId))
+    .orderBy(desc(pinkyPromises.createdAt))
+    .limit(limit)
+    .all();
+}
+
+/** Count of promises still awaiting a kept/broken outcome. */
+export function pendingPromiseCount(childId: number): number {
+  const row = db
+    .select({ n: sql<number>`count(*)` })
+    .from(pinkyPromises)
+    .where(and(eq(pinkyPromises.childId, childId), isNull(pinkyPromises.kept)))
+    .get();
+  return row?.n ?? 0;
+}
+
+export function setPromiseKept(id: number, kept: boolean | null): void {
+  db.update(pinkyPromises).set({ kept }).where(eq(pinkyPromises.id, id)).run();
+}
+
+export function deletePromise(id: number): void {
+  db.delete(pinkyPromises).where(eq(pinkyPromises.id, id)).run();
 }

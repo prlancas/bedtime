@@ -13,7 +13,10 @@
       "infoPlist": {
         "NSCameraUsageDescription": "Bedtime uses the camera to take a profile picture for each child.",
         "NSPhotoLibraryUsageDescription": "Bedtime lets you choose a profile picture for each child from your photos.",
-        "UIBackgroundModes": ["audio"]
+        "NSMicrophoneUsageDescription": "Bedtime uses the microphone to record custom alarm sounds for each child.",
+        "UIBackgroundModes": [
+          "audio"
+        ]
       }
     },
     "android": {
@@ -32,7 +35,8 @@
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.VIBRATE",
-        "android.permission.WAKE_LOCK"
+        "android.permission.WAKE_LOCK",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
@@ -42,7 +46,12 @@
     "plugins": [
       "expo-router",
       "expo-sqlite",
-      "expo-audio",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Bedtime uses the microphone to record custom alarm sounds for each child."
+        }
+      ],
       "react-native-notify-kit",
       [
         "expo-image-picker",
@@ -54,7 +63,10 @@
       [
         "expo-notifications",
         {
-          "sounds": ["./assets/sounds/warning.wav", "./assets/sounds/bedtime.wav"]
+          "sounds": [
+            "./assets/sounds/warning.wav",
+            "./assets/sounds/bedtime.wav"
+          ]
         }
       ],
       [
@@ -66,7 +78,8 @@
         }
       ],
       "expo-font",
-      "expo-asset"
+      "expo-asset",
+      "expo-quick-actions"
     ],
     "experiments": {
       "typedRoutes": true

@@ -1,7 +1,16 @@
 import type { Settings } from '@/db/schema';
-import { clamp, isWeekendNight } from '@/lib/time';
+import { clamp, dateKey, isWeekendNight } from '@/lib/time';
 
 export type Outcome = 'good' | 'bad' | 'revoked';
+
+/**
+ * Whether a child's bedtime alarms are paused for the given night. Paused when
+ * `pausedUntil` (YYYY-MM-DD, inclusive) is set and the night is on or before it.
+ */
+export function isBedtimePaused(pausedUntil: string | null | undefined, night: Date): boolean {
+  if (!pausedUntil) return false;
+  return dateKey(night) <= pausedUntil;
+}
 
 /**
  * The weekend offset applied to a given night. Friday and Saturday nights are

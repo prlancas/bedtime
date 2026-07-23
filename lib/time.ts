@@ -51,3 +51,16 @@ export function isWeekendNight(date: Date): boolean {
 export function weekdayLabel(date: Date): string {
   return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()];
 }
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** Friendly date label, e.g. "Wed 15 Jul". */
+export function formatDate(date: Date): string {
+  return `${weekdayLabel(date)} ${date.getDate()} ${MONTHS[date.getMonth()]}`;
+}
+
+/** Parse a YYYY-MM-DD key into a local Date (midnight). */
+export function dateFromKey(key: string): Date {
+  const [y, m, d] = key.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}

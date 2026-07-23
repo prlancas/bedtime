@@ -8,11 +8,11 @@ import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { NavBar } from '@/components/NavBar';
 import { Screen } from '@/components/Screen';
-import { SoundPicker, TimeStepper } from '@/components/TimeStepper';
+import { SoundConfig } from '@/components/SoundConfig';
+import { NumberStepper, TimeStepper } from '@/components/TimeStepper';
 import { createChild, deleteChild, getChild, updateChild } from '@/db/repo';
 import { childColors } from '@/lib/theme';
 import { pickPhoto, takePhoto } from '@/lib/photos';
-import { playSound } from '@/lib/sound';
 import { useStore } from '@/store/useStore';
 
 export default function EditChild() {
@@ -28,6 +28,12 @@ export default function EditChild() {
   const [warningLead, setWarningLead] = useState(existing?.warningLeadMinutes ?? 10);
   const [warningSound, setWarningSound] = useState(existing?.warningSound ?? 'warning');
   const [bedtimeSound, setBedtimeSound] = useState(existing?.bedtimeSound ?? 'bedtime');
+  const [warningSoundUri, setWarningSoundUri] = useState<string | null>(
+    existing?.warningSoundUri ?? null,
+  );
+  const [bedtimeSoundUri, setBedtimeSoundUri] = useState<string | null>(
+    existing?.bedtimeSoundUri ?? null,
+  );
 
   async function handlePhoto(source: 'camera' | 'library') {
     const uri = source === 'camera' ? await takePhoto() : await pickPhoto();
@@ -47,6 +53,8 @@ export default function EditChild() {
       warningLeadMinutes: warningLead,
       warningSound,
       bedtimeSound,
+      warningSoundUri: warningSound === 'custom' ? warningSoundUri : null,
+      bedtimeSoundUri: bedtimeSound === 'custom' ? bedtimeSoundUri : null,
     };
     if (editingId) updateChild(editingId, data);
     else createChild(data);
@@ -119,12 +127,14 @@ export default function EditChild() {
 
       <Card className="mt-4 gap-4">
         <TimeStepper label="Bedtime" value={bedtime} onChange={setBedtime} />
-        <TimeStepper
-          label={`Pre-bedtime warning (${warningLead} min before)`}
+        <NumberStepper
+          label="Pre-bedtime warning"
           value={warningLead}
           onChange={setWarningLead}
           min={0}
           max={60}
+          step={5}
+          unit="min before"
         />
         <Text className="text-xs text-night-300">
           Warning alarm at {warningLead} minutes before bed lets them grab a snack or wind down.
@@ -132,18 +142,28 @@ export default function EditChild() {
       </Card>
 
       <Card className="mt-4 gap-4">
-        <SoundPicker
+        <SoundConfig
           label="Warning sound"
-          value={warningSound}
-          onChange={setWarningSound}
-          onPreview={(v) => playSound(v as 'warning' | 'bedtime')}
+          sound={warningSound}
+          uri={warningSoundUri}
+          onChange={(s, u) => {
+            setWarningSound(s);
+            setWarningSoundUri(u);
+          }}
         />
-        <SoundPicker
+        <SoundConfig
           label="Bedtime sound"
-          value={bedtimeSound}
-          onChange={setBedtimeSound}
-          onPreview={(v) => playSound(v as 'warning' | 'bedtime')}
+          sound={bedtimeSound}
+          uri={bedtimeSoundUri}
+          onChange={(s, u) => {
+            setBedtimeSound(s);
+            setBedtimeSoundUri(u);
+          }}
         />
+        <Text className="text-xs text-night-300">
+          Custom recordings/uploads play on the in-app alarm screen. Lock-screen notification sounds
+          use the built-in tones.
+        </Text>
       </Card>
 
       <View className="mt-6 gap-3">
